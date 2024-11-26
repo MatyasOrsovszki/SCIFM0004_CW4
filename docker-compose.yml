@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - task_network
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:15672/"]
+      interval: 10s
+      retries: 10
+      start_period: 10s
+
+  producer:
+    image: cw4
+    build:
+      context: .  # Path to Dockerfile
+    command: python producer.py
+    networks:
+      - task_network
+    depends_on:
+      rabbitmq:
+        condition: service_started
+
+  consumer:
+    image: cw4
+    build:
+      context: .  # Path to Dockerfile
+    command: python consumer.py
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    networks:
+      - task_network
+    deploy:
+      replicas: 3
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    restart: always
+    volumes:
+      - ./logs:/app/logs
+networks:
+  task_network:
+    driver: bridge
