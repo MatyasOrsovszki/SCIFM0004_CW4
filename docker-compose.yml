@@ -45,6 +45,22 @@ services:
     restart: always
     volumes:
       - ./logs:/app/logs
+
+
+  collector:
+    image: cw4
+    build:
+      context: . # Path to Dockerfile
+    command: python collector.py
+    networks:
+      - task_network
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - consumer
+    volumes:
+      - ./logs:/app/logs
+
 networks:
   task_network:
     driver: bridge

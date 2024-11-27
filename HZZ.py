@@ -9,6 +9,8 @@ import awkward as ak # to represent nested data in columnar format
 import vector # for 4-momentum calculations
 import time
 
+start_time = time.time()
+
 MeV = 0.001
 GeV = 1.0
 
@@ -120,6 +122,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     setup_plot(ax, xmin, xmax, step_size, np.amax(data_x))
     plot_data(ax, bin_centres, data_x, data_x_errors)
-    plt.show()
+    #plt.show()
 
     
+print(time.time()-start_time)

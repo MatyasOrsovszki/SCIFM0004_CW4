@@ -1,1 +1,8 @@
 pika
+numpy
+matplotlib
+uproot
+awkward
+vector
+requests
+aiohttp
