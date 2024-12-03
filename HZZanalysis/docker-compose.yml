@@ -12,21 +12,22 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:15672/"]
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       retries: 10
-      start_period: 10s
 
   producer:
     image: cw4
     build:
       context: .  # Path to Dockerfile
-    command: python producer.py
+    command: python producer.py ${HREF}
+    environment:
+      - HREF=${HREF:-"https://atlas-opendata.web.cern.ch/atlas-opendata/samples/2020/4lep/"}
     networks:
       - task_network
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
 
   consumer:
     image: cw4
@@ -35,14 +36,14 @@ services:
     command: python consumer.py
     environment:
       - RABBITMQ_URL=amqp://rabbitmq:5672
+      - NUM_CONSUMERS=${NUM_CONSUMERS:-1}
     networks:
       - task_network
     deploy:
-      replicas: 3
+      replicas: ${NUM_CONSUMERS:-1}
     depends_on:
       rabbitmq:
-        condition: service_started
-    restart: always
+        condition: service_healthy
     volumes:
       - ./logs:/app/logs
 
@@ -57,9 +58,14 @@ services:
     environment:
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on:
-      - consumer
+      rabbitmq:
+        condition: service_healthy
+      consumer:
+        condition: service_started
     volumes:
       - ./logs:/app/logs
+      - ./shutdown.sh:/app/shutdown.sh
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   task_network:

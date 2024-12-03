@@ -10,13 +10,18 @@ import time
 import gzip
 import math
 import json
+import sys
 
 start_time = time.time()
 
 MeV = 0.001
 GeV = 1.0
 
-path = "https://atlas-opendata.web.cern.ch/atlas-opendata/samples/2020/4lep/"
+path = sys.argv[1]
+
+#with open('datahref.txt', 'r') as file:
+#    path = file.read()
+#path = "https://atlas-opendata.web.cern.ch/atlas-opendata/samples/2020/4lep/"
 
 samples = {
 
@@ -73,7 +78,7 @@ channel.queue_declare(queue='time_queue', durable=True)
 
 tree = get_tree(samples['data']['list'][0])
 num_entries = tree.num_entries
-chunk_size = math.ceil(num_entries/3)
+chunk_size = 1# math.ceil(num_entries/3)
 
 
 chunks = 0

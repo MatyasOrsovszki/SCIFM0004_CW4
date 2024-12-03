@@ -4,11 +4,10 @@ import logging
 import json
 import awkward as ak
 import vector
+import sys
 
 MeV = 0.001
 GeV = 1.0
-
-consumers = 3
 
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
 
@@ -58,10 +57,15 @@ def callback(ch, method, properties, body):
     incoming = ak.from_json(body)
     logging.info("recieved")
     data = process_sample(incoming)
-    # Acknowledge the message
-    #ch.basic_ack(delivery_tag=method.delivery_tag)
+
     channel.basic_publish(exchange='', routing_key='result_queue',body=ak.to_json(data))
     logging.info("data sent")
+
+def callback_shutdown(ch, method, properties, body):
+    incoming = ak.from_json(body)
+    logging.info("recieved shutdown command")
+    ch.stop_consuming()
+    connection.close()
 
 def connect_to_rabbitmq():
     while True:
@@ -72,7 +76,7 @@ def connect_to_rabbitmq():
         except pika.exceptions.AMQPConnectionError:
             print("Failed to connect to RabbitMQ. Retrying in 5 seconds...")
             time.sleep(10)
-
+    
 # Wait for a successful connection
 connection = connect_to_rabbitmq()
 
@@ -83,9 +87,12 @@ channel.basic_qos(prefetch_count=1)
 # Declare a queue
 channel.queue_declare(queue='task_queue', durable=True)
 channel.queue_declare(queue='result_queue', durable=True)
+channel.queue_declare(queue='shutdown_queue', durable=True)
 
 
 # Set up the consumer to consume messages from the queue
+channel.basic_consume(queue='shutdown_queue', on_message_callback=callback_shutdown, auto_ack=True)
+
 channel.basic_consume(queue='task_queue', on_message_callback=callback, auto_ack=True)
 
 print(' [*] Waiting for messages. To exit press CTRL+C')

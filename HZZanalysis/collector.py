@@ -10,6 +10,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator # for minor ticks
 
+import subprocess
+
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
 data_chunks = []
 
@@ -60,6 +62,8 @@ def callback(ch, method, properties, body):
 
     logging.info(str(received) + " " + str(expected_chunks))
     if received == expected_chunks:
+        for i in range(received):
+            channel.basic_publish(exchange='', routing_key='shutdown_queue',body=json.dumps("shutdown"))
          # Histogram settings
         xmin, xmax = 80 * GeV, 250 * GeV
         step_size = 5 * GeV
@@ -77,7 +81,15 @@ def callback(ch, method, properties, body):
         plt.savefig('./logs/plot.png')
         plt.close()
         logging.info('plot saved as plot.png')
+        logging.info("Shutting down...")
+        ch.stop_consuming()
+        ch.close()
+        connection.close()
+        logging.info("Connection closed.")
+        subprocess.Popen(['/bin/sh', '/app/shutdown.sh'])
+        os.system('docker-compose stop rabbitmq')
 
+        
 
 def connect_to_rabbitmq():
     while True:
@@ -98,11 +110,13 @@ channel = connection.channel()
 channel.queue_declare(queue='result_queue', durable=True)
 channel.queue_declare(queue='chunks_queue', durable=True)
 channel.queue_declare(queue='time_queue', durable=True)
+channel.queue_declare(queue='shutdown_queue', durable=True)
 
 
 # Start consuming messages from RabbitMQ
 channel.basic_consume(queue='chunks_queue', on_message_callback=callback_chunks, auto_ack=True)
 channel.basic_consume(queue='result_queue', on_message_callback=callback, auto_ack=True)
 channel.basic_consume(queue='time_queue', on_message_callback=callback_time, auto_ack=True)
+
 logging.info(f"Collector is listening for messages on 'result_queue'...")
 channel.start_consuming()
