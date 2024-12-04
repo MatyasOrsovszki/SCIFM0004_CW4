@@ -16,15 +16,16 @@ import os
 
 start_time = time.time()
 
+consumers = int(os.getenv('NUM_CONSUMERS', 1))
 debug = os.getenv('DEBUG', 'False').lower() == 'true'
 if debug:
     logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
 else:
     logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
 
-datesets = {'A':0,'B':1,'C':2,'D':3}
+datasets = {'A':0,'B':1,'C':2,'D':3}
 lumis = [0.5,1.9,2.9,4.7]
-dataset = datesets[os.getenv('DATASET', 'A').upper()]
+dataset = datasets[os.getenv('DATASET', 'A').upper()]
 lumi = lumis[dataset] # selects lumi based on which dataset is in use
 
 MeV = 0.001
@@ -85,7 +86,7 @@ def get_MC_tree(mc_name):
 
 def send_chunks(tree, destination):
     num_entries = tree.num_entries
-    chunk_size = 1# math.ceil(num_entries/3)
+    chunk_size = math.ceil(num_entries/consumers)
 
     chunks = 0
     for chunk in tree_chunks(tree, chunk_size):
