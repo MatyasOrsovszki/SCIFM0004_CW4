@@ -11,8 +11,18 @@ import gzip
 import math
 import json
 import sys
+import logging
+import os
 
 start_time = time.time()
+
+debug = os.getenv('DEBUG', 'False').lower() == 'true'
+if debug:
+    logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
+else:
+    logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
+
+
 
 MeV = 0.001
 GeV = 1.0
@@ -57,11 +67,11 @@ def tree_chunks(tree, chunk_size):
 def connect_to_rabbitmq():
     while True:
         try:
-            print("Attempting to connect to RabbitMQ...")
+            logging.info("Attempting to connect to RabbitMQ...")
             connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
             return connection
         except pika.exceptions.AMQPConnectionError:
-            print("Failed to connect to RabbitMQ. Retrying in 5 seconds...")
+            logging.info("Failed to connect to RabbitMQ. Retrying in 5 seconds...")
             time.sleep(5)
 
 # Wait for a successful connection
@@ -92,7 +102,7 @@ for chunk in tree_chunks(tree, chunk_size):
             delivery_mode=2,  # Make the message persistent
         )
     )
-    print(f" [x] Sent")
+    logging.info(f" [x] Sent")
 
 channel.basic_publish(exchange='',routing_key='chunks_queue',body=json.dumps(chunks))
 channel.basic_publish(exchange='',routing_key='time_queue',body=json.dumps(start_time))

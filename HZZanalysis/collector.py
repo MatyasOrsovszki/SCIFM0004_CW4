@@ -12,7 +12,11 @@ from matplotlib.ticker import AutoMinorLocator # for minor ticks
 
 import subprocess
 
-logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
+debug = os.getenv('DEBUG', 'False').lower() == 'true'
+if debug:
+    logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
+else:
+    logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
 data_chunks = []
 
 MeV = 0.001
@@ -78,7 +82,12 @@ def callback(ch, method, properties, body):
         fig, ax = plt.subplots()
         setup_plot(ax, xmin, xmax, step_size, np.amax(data_x))
         plot_data(ax, bin_centres, data_x, data_x_errors)
-        plt.savefig('./logs/plot.png')
+
+        timestamp = time.time()
+        local_time = time.localtime(timestamp)
+        name = time.strftime("%d-%m-%Y %H-%M", local_time)
+        
+        plt.savefig(f'/app/logs/{name}.png')
         plt.close()
         logging.info('plot saved as plot.png')
         logging.info("Shutting down...")
@@ -94,11 +103,11 @@ def callback(ch, method, properties, body):
 def connect_to_rabbitmq():
     while True:
         try:
-            print("Attempting to connect to RabbitMQ...")
+            logging.info("Attempting to connect to RabbitMQ...")
             connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
             return connection
         except pika.exceptions.AMQPConnectionError:
-            print("Failed to connect to RabbitMQ. Retrying in 5 seconds...")
+            logging.info("Failed to connect to RabbitMQ. Retrying in 5 seconds...")
             time.sleep(10)
 
 

@@ -5,11 +5,17 @@ import json
 import awkward as ak
 import vector
 import sys
+import os
 
 MeV = 0.001
 GeV = 1.0
 
-logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
+debug = os.getenv('DEBUG', 'False').lower() == 'true'
+if debug:
+    logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
+else:
+    logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
+
 
 variables = ['lep_pt','lep_eta','lep_phi','lep_E','lep_charge','lep_type']
 
@@ -70,11 +76,11 @@ def callback_shutdown(ch, method, properties, body):
 def connect_to_rabbitmq():
     while True:
         try:
-            print("Attempting to connect to RabbitMQ...")
+            logging.info("Attempting to connect to RabbitMQ...")
             connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
             return connection
         except pika.exceptions.AMQPConnectionError:
-            print("Failed to connect to RabbitMQ. Retrying in 5 seconds...")
+            logging.info("Failed to connect to RabbitMQ. Retrying in 5 seconds...")
             time.sleep(10)
     
 # Wait for a successful connection
@@ -95,5 +101,5 @@ channel.basic_consume(queue='shutdown_queue', on_message_callback=callback_shutd
 
 channel.basic_consume(queue='task_queue', on_message_callback=callback, auto_ack=True)
 
-print(' [*] Waiting for messages. To exit press CTRL+C')
+logging.info(' [*] Waiting for messages. To exit press CTRL+C')
 channel.start_consuming()

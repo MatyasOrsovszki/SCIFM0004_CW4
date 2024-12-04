@@ -16,12 +16,8 @@ WORKDIR /app
 
 # Copy the application files into the container
 COPY . /app
-COPY ./shutdown.sh /app/shutdown.sh
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-
-
-RUN chmod +x /app/shutdown.sh
 
 # Set the default command to run
 CMD ["python", "producer.py"]

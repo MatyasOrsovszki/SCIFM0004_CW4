@@ -3,6 +3,8 @@ version: '3.9'
 services:
   rabbitmq:
     image: rabbitmq:3-management
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -23,6 +25,7 @@ services:
     command: python producer.py ${HREF}
     environment:
       - HREF=${HREF:-"https://atlas-opendata.web.cern.ch/atlas-opendata/samples/2020/4lep/"}
+      - DEBUG=${DEBUG:-False}
     networks:
       - task_network
     depends_on:
@@ -37,6 +40,7 @@ services:
     environment:
       - RABBITMQ_URL=amqp://rabbitmq:5672
       - NUM_CONSUMERS=${NUM_CONSUMERS:-1}
+      - DEBUG=${DEBUG:-False}
     networks:
       - task_network
     deploy:
@@ -44,8 +48,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    volumes:
-      - ./logs:/app/logs
+    
 
 
   collector:
@@ -57,14 +60,14 @@ services:
       - task_network
     environment:
       - RABBITMQ_URL=amqp://rabbitmq:5672
+      - DEBUG=${DEBUG:-False}
     depends_on:
       rabbitmq:
         condition: service_healthy
       consumer:
         condition: service_started
     volumes:
-      - ./logs:/app/logs
-      - ./shutdown.sh:/app/shutdown.sh
+      - ${PWD}/output:/app/logs
       - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
