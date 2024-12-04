@@ -27,8 +27,8 @@ echo "Docker is running. Proceeding with the script..."
 
 NUM_CONSUMERS=1
 HREF=$(cat datahref.txt)
-# HREF=${2:-$HREF}
 DEBUG=false
+DATASET=A
 
 # Using keyword arguments for internal variables
 while [[ "$#" -gt 0 ]]; do
@@ -36,6 +36,7 @@ while [[ "$#" -gt 0 ]]; do
         --consumers) NUM_CONSUMERS="$2"; shift ;;
         --href) HREF="$2"; shift ;;
         --debug) DEBUG="$2"; shift ;;
+	--dataset) DATASET="$2"; shift ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -44,6 +45,7 @@ done
 export NUM_CONSUMERS
 export HREF
 export DEBUG
+export DATASET
 
 envsubst < ./HZZanalysis/docker-compose.template.yml > ./HZZanalysis/docker-compose.yml
 

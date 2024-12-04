@@ -26,6 +26,7 @@ services:
     environment:
       - HREF=${HREF:-"https://atlas-opendata.web.cern.ch/atlas-opendata/samples/2020/4lep/"}
       - DEBUG=${DEBUG:-False}
+      - DATASET=${DATASET:-A}
     networks:
       - task_network
     depends_on:

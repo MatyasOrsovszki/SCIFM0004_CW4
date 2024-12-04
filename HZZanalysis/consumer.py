@@ -1,3 +1,4 @@
+import infofile
 import pika
 import time
 import logging
@@ -16,8 +17,36 @@ if debug:
 else:
     logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
 
+datesets = {'A':0,'B':1,'C':2,'D':3}
+lumis = [0.5,1.9,2.9,4.7]
+dataset = datesets[os.getenv('DATASET', 'A').upper()]
+lumi = lumis[dataset] # selects lumi based on which dataset is in use
 
 variables = ['lep_pt','lep_eta','lep_phi','lep_E','lep_charge','lep_type']
+weight_variables = ["mcWeight", "scaleFactor_PILEUP", "scaleFactor_ELE", "scaleFactor_MUON", "scaleFactor_LepTRIGGER"]
+
+samples = {
+
+    'data': {
+        'list' : ['data_A','data_B','data_C','data_D'], # data is from 2016, first four periods of data taking (ABCD)
+    },
+
+    r'Background $Z,t\bar{t}$' : { # Z + ttbar
+        'list' : ['Zee','Zmumu','ttbar_lep'],
+        'color' : "#6b59d3" # purple
+    },
+
+    r'Background $ZZ^*$' : { # ZZ
+        'list' : ['llll'],
+        'color' : "#ff0000" # red
+    },
+
+    r'Signal ($m_H$ = 125 GeV)' : { # H -> ZZ -> llll
+        'list' : ['ggH125_ZZ4lep','VBFH125_ZZ4lep','WH125_ZZ4lep','ZH125_ZZ4lep'],
+        'color' : "#00cdff" # light blue
+    },
+
+}
 
 # Cut lepton type (electron type is 11,  muon type is 13)
 def cut_lep_type(lep_type):
@@ -38,6 +67,13 @@ def calc_mass(lep_pt, lep_eta, lep_phi, lep_E):
     invariant_mass = (p4[:, 0] + p4[:, 1] + p4[:, 2] + p4[:, 3]).M * MeV # .M calculates the invariant mass
     return invariant_mass
 
+def calc_weight(weight_variables, sample, events):
+    info = infofile.infos[sample]
+    xsec_weight = (lumi*1000*info["xsec"])/(info["sumw"]*info["red_eff"]) #*1000 to go from fb-1 to pb-1
+    total_weight = xsec_weight 
+    for variable in weight_variables:
+        total_weight = total_weight * events[variable]
+    return total_weight
 
 def process_sample(data, step_size = 1000000):
     # Define empty list to hold all data for this sample
@@ -57,7 +93,27 @@ def process_sample(data, step_size = 1000000):
 
     return ak.concatenate(sample_data)
 
+def mc_process_sample(data, value, step_size = 1000000):
+    sample_data = []
 
+    
+        # Cuts
+    lep_type = data['lep_type']
+    data = data[~cut_lep_type(lep_type)]
+    lep_charge = data['lep_charge']
+    data = data[~cut_lep_charge(lep_charge)]
+        
+        # Invariant Mass
+    data['mass'] = calc_mass(data['lep_pt'], data['lep_eta'], data['lep_phi'], data['lep_E'])
+
+        # Store Monte Carlo weights in the data
+    data['totalWeight'] = calc_weight(weight_variables, value, data)
+
+        # Append data to the whole sample data list
+    sample_data.append(data)
+
+    # turns sample_data back into an awkward array
+    return ak.concatenate(sample_data)
 
 def callback(ch, method, properties, body):
     incoming = ak.from_json(body)
@@ -66,6 +122,16 @@ def callback(ch, method, properties, body):
 
     channel.basic_publish(exchange='', routing_key='result_queue',body=ak.to_json(data))
     logging.info("data sent")
+
+def mc_callback(ch, method, properties, body):
+    incoming = ak.from_json(body)
+    logging.info("mc recieved")
+    value = samples["Background $Z,t\\bar{t}$"]["list"][dataset]
+    info = infofile.infos[value] # open infofile
+    xsec_weight = (lumi*1000*info["xsec"])/(info["red_eff"]*info["sumw"]) #*1000 to go from fb-1 to pb-1
+    data = mc_process_sample(incoming, value)
+    channel.basic_publish(exchange='', routing_key='mc_result_queue',body=ak.to_json(data))
+    logging.info("mc data sent")
 
 def callback_shutdown(ch, method, properties, body):
     incoming = ak.from_json(body)
@@ -94,12 +160,15 @@ channel.basic_qos(prefetch_count=1)
 channel.queue_declare(queue='task_queue', durable=True)
 channel.queue_declare(queue='result_queue', durable=True)
 channel.queue_declare(queue='shutdown_queue', durable=True)
+channel.queue_declare(queue='mc_task_queue', durable=True)
+channel.queue_declare(queue='mc_result_queue', durable=True)
 
 
 # Set up the consumer to consume messages from the queue
 channel.basic_consume(queue='shutdown_queue', on_message_callback=callback_shutdown, auto_ack=True)
 
 channel.basic_consume(queue='task_queue', on_message_callback=callback, auto_ack=True)
+channel.basic_consume(queue='mc_task_queue', on_message_callback=mc_callback, auto_ack=True)
 
 logging.info(' [*] Waiting for messages. To exit press CTRL+C')
 channel.start_consuming()

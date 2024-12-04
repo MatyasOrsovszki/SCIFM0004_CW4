@@ -22,7 +22,10 @@ if debug:
 else:
     logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
 
-
+datesets = {'A':0,'B':1,'C':2,'D':3}
+lumis = [0.5,1.9,2.9,4.7]
+dataset = datesets[os.getenv('DATASET', 'A').upper()]
+lumi = lumis[dataset] # selects lumi based on which dataset is in use
 
 MeV = 0.001
 GeV = 1.0
@@ -56,6 +59,8 @@ samples = {
 
 }
 
+weight_variables = ["mcWeight", "scaleFactor_PILEUP", "scaleFactor_ELE", "scaleFactor_MUON", "scaleFactor_LepTRIGGER"]
+
 def get_tree(sample_name):
     file_path = path + "Data/" + sample_name + ".4lep.root"
     return  uproot.open(file_path + ":mini;1")
@@ -74,6 +79,27 @@ def connect_to_rabbitmq():
             logging.info("Failed to connect to RabbitMQ. Retrying in 5 seconds...")
             time.sleep(5)
 
+def get_MC_tree(mc_name):
+    background_Zee_path = path + "MC/mc_"+str(infofile.infos[mc_name]["DSID"])+"."+mc_name+".4lep.root"
+    return uproot.open(background_Zee_path + ":mini;1")
+
+def send_chunks(tree, destination):
+    num_entries = tree.num_entries
+    chunk_size = 1# math.ceil(num_entries/3)
+
+    chunks = 0
+    for chunk in tree_chunks(tree, chunk_size):
+        chunks += 1
+        channel.basic_publish(
+            exchange='',
+            routing_key=destination,
+            body=ak.to_json(chunk),
+            properties=pika.BasicProperties(
+                delivery_mode=2,  # Make the message persistent
+            )
+        )
+        logging.info(f" [x] Sent {chunks}")
+    return chunks
 # Wait for a successful connection
 connection = connect_to_rabbitmq()
 
@@ -84,27 +110,19 @@ channel = connection.channel()
 channel.queue_declare(queue='task_queue', durable=True)
 channel.queue_declare(queue='chunks_queue', durable=True)
 channel.queue_declare(queue='time_queue', durable=True)
+channel.queue_declare(queue='mc_task_queue', durable=True)
+channel.queue_declare(queue='mc_chunks_queue', durable=True)
 # Send numbers 1 to 100 to the queue
 
-tree = get_tree(samples['data']['list'][0])
-num_entries = tree.num_entries
-chunk_size = 1# math.ceil(num_entries/3)
+tree = get_tree(samples['data']['list'][dataset])
+chunks = send_chunks(tree, 'task_queue')
 
+MC_tree = get_MC_tree(samples["Background $Z,t\\bar{t}$"]["list"][dataset])
+mc_chunks = send_chunks(MC_tree, 'mc_task_queue')
 
-chunks = 0
-for chunk in tree_chunks(tree, chunk_size):
-    chunks += 1
-    channel.basic_publish(
-        exchange='',
-        routing_key='task_queue',
-        body=ak.to_json(chunk),
-        properties=pika.BasicProperties(
-            delivery_mode=2,  # Make the message persistent
-        )
-    )
-    logging.info(f" [x] Sent")
 
 channel.basic_publish(exchange='',routing_key='chunks_queue',body=json.dumps(chunks))
+channel.basic_publish(exchange='',routing_key='mc_chunks_queue',body=json.dumps(mc_chunks))
 channel.basic_publish(exchange='',routing_key='time_queue',body=json.dumps(start_time))
 # Close the connection
 connection.close()
