@@ -88,23 +88,6 @@ def callback_chunks(ch, method, properties, body):
             # Histogram settings
             for identifier, chunks in data_chunks.items():
                 all_data[identifier] = ak.concatenate(chunks)
-             
-            """xmin, xmax = 80 * GeV, 250 * GeV
-            step_size = 5 * GeV
-            bin_edges = np.arange(xmin, xmax + step_size, step_size)
-            bin_centres = bin_edges[:-1] + step_size / 2
-
-            # Histogram data
-            data_x, _ = np.histogram(data_chunks['mass'].to_numpy(), bins=bin_edges)
-            data_x_errors = np.sqrt(data_x)
-
-            # Plot data
-            fig, ax = plt.subplots()
-            setup_plot(ax, xmin, xmax, step_size, np.amax(data_x))
-            ax.errorbar(bin_centres, data_x, yerr=data_x_errors, fmt='ko', label='Data')
-            ax.legend(frameon=False)
-
-            save_plot()"""
             break
 
 def callback_mc_chunks(ch, method, properties, body):
@@ -185,25 +168,6 @@ def mc_callback(ch, method, properties, body):
                 mc_weights.append( ak.to_numpy(all_data[s].totalWeight) ) # append to the list of Monte Carlo weights
                 mc_colors.append( samples[s]['color'] ) # append to the list of Monte Carlo bar colors
                 mc_labels.append( s ) # append to the list of Monte Carlo legend labels
-
-        """
-        # Plot data
-        fig, main_axes = plt.subplots()
-        setup_plot(main_axes, xmin, xmax, step_size, np.amax(data_x))
-        mc_x = ak.to_numpy(mc_data_chunks["mass"]) # define list to hold the Monte Carlo histogram entries
-        mc_weights = ak.to_numpy(mc_data_chunks["totalWeight"]) # define list to hold the Monte Carlo weights
-        mc_colors = samples["Background $Z,t\\bar{t}$"]['color'] # define list to hold the colors of the Monte Carlo bars
-        mc_labels = "Background $Z \\to ee$" # define list to hold the legend labels of the Monte Carlo bars
-
-        main_axes.errorbar(x=bin_centres, y=data_x, yerr=data_x_errors,fmt='ko',label='Data') 
-
-        # plot the Monte Carlo bars
-        mc_heights = main_axes.hist(mc_x, bins=bin_edges, weights=mc_weights, stacked=True, color=mc_colors, label=mc_labels)
-        mc_x_tot = mc_heights[0] # stacked background MC y-axis value
-        mc_x_err = np.sqrt(np.histogram(np.hstack(mc_x), bins=bin_edges, weights=np.hstack(mc_weights)**2)[0])
-        main_axes.bar(bin_centres,2*mc_x_err, alpha=0.5, bottom=mc_x_tot-mc_x_err, color='none', hatch="////", width=step_size, label='Stat. Unc.' )
-        main_axes.legend( frameon=False ); # no box around the legend
-        """
         # *************
         # Main plot 
         # *************
