@@ -21,6 +21,7 @@ datasets = {'A':0,'B':1,'C':2,'D':3}
 lumis = [0.5,1.9,2.9,4.7]
 dataset = datasets[os.getenv('DATASET', 'A').upper()]
 lumi = lumis[dataset] # selects lumi based on which dataset is in use
+lumi = 10.0 # 10.0 used for final analysis
 
 variables = ['lep_pt','lep_eta','lep_phi','lep_E','lep_charge','lep_type']
 weight_variables = ["mcWeight", "scaleFactor_PILEUP", "scaleFactor_ELE", "scaleFactor_MUON", "scaleFactor_LepTRIGGER"]
@@ -80,6 +81,11 @@ def process_sample(data, step_size = 1000000):
     sample_data = []
     # Perform the cuts for each data entry in the tree
     # We can use data[~boolean] to remove entries from the data set
+
+    data['leading_lep_pt'] = data['lep_pt'][:,0]
+    data['sub_leading_lep_pt'] = data['lep_pt'][:,1]
+    data['third_leading_lep_pt'] = data['lep_pt'][:,2]
+    data['last_lep_pt'] = data['lep_pt'][:,3]
     
     lep_type = data['lep_type']
     data = data[~cut_lep_type(lep_type)]
@@ -96,6 +102,10 @@ def process_sample(data, step_size = 1000000):
 def mc_process_sample(data, value, step_size = 1000000):
     sample_data = []
 
+    data['leading_lep_pt'] = data['lep_pt'][:,0]
+    data['sub_leading_lep_pt'] = data['lep_pt'][:,1]
+    data['third_leading_lep_pt'] = data['lep_pt'][:,2]
+    data['last_lep_pt'] = data['lep_pt'][:,3]
     
         # Cuts
     lep_type = data['lep_type']
@@ -116,21 +126,33 @@ def mc_process_sample(data, value, step_size = 1000000):
     return ak.concatenate(sample_data)
 
 def callback(ch, method, properties, body):
-    incoming = ak.from_json(body)
+    message = json.loads(body)
+    incoming = ak.from_json(message["data"])
+    identifier = message["identifier"]
+    val = message["val"]
     logging.info("recieved")
+
     data = process_sample(incoming)
 
-    channel.basic_publish(exchange='', routing_key='result_queue',body=ak.to_json(data))
+    payload = json.dumps({"data": ak.to_json(data), "identifier": identifier})
+
+    channel.basic_publish(exchange='', routing_key='result_queue',body=payload)
     logging.info("data sent")
 
 def mc_callback(ch, method, properties, body):
-    incoming = ak.from_json(body)
+    message = json.loads(body)
+    incoming = ak.from_json(message["data"])
+    identifier = message["identifier"]
+    val = message["val"]
     logging.info("mc recieved")
-    value = samples["Background $Z,t\\bar{t}$"]["list"][dataset]
-    info = infofile.infos[value] # open infofile
+    info = infofile.infos[val] # open infofile
     xsec_weight = (lumi*1000*info["xsec"])/(info["red_eff"]*info["sumw"]) #*1000 to go from fb-1 to pb-1
-    data = mc_process_sample(incoming, value)
-    channel.basic_publish(exchange='', routing_key='mc_result_queue',body=ak.to_json(data))
+
+    data = mc_process_sample(incoming, val)
+
+    payload = json.dumps({"data": ak.to_json(data), "identifier": identifier})
+    
+    channel.basic_publish(exchange='', routing_key='mc_result_queue',body=payload)
     logging.info("mc data sent")
 
 def callback_shutdown(ch, method, properties, body):

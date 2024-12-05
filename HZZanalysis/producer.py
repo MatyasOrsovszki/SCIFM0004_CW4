@@ -61,13 +61,18 @@ samples = {
 }
 
 weight_variables = ["mcWeight", "scaleFactor_PILEUP", "scaleFactor_ELE", "scaleFactor_MUON", "scaleFactor_LepTRIGGER"]
+variables = ['lep_pt','lep_eta','lep_phi','lep_E','lep_charge','lep_type']
 
 def get_tree(sample_name):
     file_path = path + "Data/" + sample_name + ".4lep.root"
     return  uproot.open(file_path + ":mini;1")
 
-def tree_chunks(tree, chunk_size):
-    for chunk in tree.iterate(library="ak", step_size=chunk_size):
+def tree_chunks(tree, chunk_size, useweight):
+    if useweight:
+        variable = variables + weight_variables
+    else:
+        variable = variables
+    for chunk in tree.iterate(variable, library="ak", step_size=chunk_size):
         yield chunk
 
 def connect_to_rabbitmq():
@@ -84,17 +89,17 @@ def get_MC_tree(mc_name):
     background_Zee_path = path + "MC/mc_"+str(infofile.infos[mc_name]["DSID"])+"."+mc_name+".4lep.root"
     return uproot.open(background_Zee_path + ":mini;1")
 
-def send_chunks(tree, destination):
+def send_chunks(tree, destination, s, val=None, useweight=False):
     num_entries = tree.num_entries
     chunk_size = math.ceil(num_entries/consumers)
 
     chunks = 0
-    for chunk in tree_chunks(tree, chunk_size):
+    for chunk in tree_chunks(tree, chunk_size, useweight):
         chunks += 1
         channel.basic_publish(
             exchange='',
             routing_key=destination,
-            body=ak.to_json(chunk),
+            body=json.dumps({"data": ak.to_json(chunk), "identifier": s, "val": val}),
             properties=pika.BasicProperties(
                 delivery_mode=2,  # Make the message persistent
             )
@@ -115,15 +120,22 @@ channel.queue_declare(queue='mc_task_queue', durable=True)
 channel.queue_declare(queue='mc_chunks_queue', durable=True)
 # Send numbers 1 to 100 to the queue
 
-tree = get_tree(samples['data']['list'][dataset])
-chunks = send_chunks(tree, 'task_queue')
+overall_chunks = 0
+overall_mc_chunks = 0
+for s in samples:
+    for val in samples[s]['list']:
+        if s == 'data':
+            tree = get_tree(val)
+            chunks = send_chunks(tree, 'task_queue', s)
+            overall_chunks += chunks
+        else:
+            MC_tree = get_MC_tree(val)
+            mc_chunks = send_chunks(MC_tree, 'mc_task_queue', s, val=val, useweight=True)
+            overall_mc_chunks += mc_chunks
 
-MC_tree = get_MC_tree(samples["Background $Z,t\\bar{t}$"]["list"][dataset])
-mc_chunks = send_chunks(MC_tree, 'mc_task_queue')
 
-
-channel.basic_publish(exchange='',routing_key='chunks_queue',body=json.dumps(chunks))
-channel.basic_publish(exchange='',routing_key='mc_chunks_queue',body=json.dumps(mc_chunks))
+channel.basic_publish(exchange='',routing_key='chunks_queue',body=json.dumps(overall_chunks))
+channel.basic_publish(exchange='',routing_key='mc_chunks_queue',body=json.dumps(overall_mc_chunks))
 channel.basic_publish(exchange='',routing_key='time_queue',body=json.dumps(start_time))
 # Close the connection
 connection.close()
