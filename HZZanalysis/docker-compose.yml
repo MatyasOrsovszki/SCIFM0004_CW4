@@ -26,7 +26,7 @@ services:
     environment:
       - HREF=${HREF:-"https://atlas-opendata.web.cern.ch/atlas-opendata/samples/2020/4lep/"}
       - DEBUG=${DEBUG:-False}
-      - NUM_CONSUMERS=${NUM_CONSUMERS:-1}
+      - NUM_CONSUMERS=${NUM_CONSUMERS:-12}
     networks:
       - task_network
     depends_on:
@@ -40,7 +40,7 @@ services:
     command: python consumer.py
     environment:
       - RABBITMQ_URL=amqp://rabbitmq:5672
-      - NUM_CONSUMERS=${NUM_CONSUMERS:-1}
+      - NUM_CONSUMERS=${NUM_CONSUMERS:-12}
       - DEBUG=${DEBUG:-False}
     networks:
       - task_network

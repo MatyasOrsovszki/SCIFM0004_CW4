@@ -126,7 +126,7 @@ def callback(ch, method, properties, body):
     incoming = ak.from_json(message["data"])
     identifier = message["identifier"]
     val = message["val"]
-    logging.info("recieved")
+    logging.info("received")
 
     data = process_sample(incoming)
 

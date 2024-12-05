@@ -25,10 +25,9 @@ fi
 # Proceed with Docker-related commands
 echo "Docker is running. Proceeding with the script..."
 
-NUM_CONSUMERS=1
+NUM_CONSUMERS=12
 HREF=$(cat datahref.txt)
 DEBUG=false
-DATASET=A
 
 # Using keyword arguments for internal variables
 while [[ "$#" -gt 0 ]]; do
@@ -44,7 +43,6 @@ done
 export NUM_CONSUMERS
 export HREF
 export DEBUG
-export DATASET
 
 envsubst < ./HZZanalysis/docker-compose.template.yml > ./HZZanalysis/docker-compose.yml
 

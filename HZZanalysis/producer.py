@@ -16,7 +16,7 @@ import os
 
 start_time = time.time()
 
-consumers = int(os.getenv('NUM_CONSUMERS', 1))
+consumers = int(os.getenv('NUM_CONSUMERS', 12))
 debug = os.getenv('DEBUG', 'False').lower() == 'true'
 if debug:
     logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler()])
