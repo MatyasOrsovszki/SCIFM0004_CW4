@@ -68,14 +68,14 @@ def setup_plot(ax, xmin, xmax, step_size, y_max):
     ax.xaxis.set_minor_locator(AutoMinorLocator())
     ax.yaxis.set_minor_locator(AutoMinorLocator())
 
-def save_plot(mc=""):
+def save_plot():
     timestamp = time.time()
     local_time = time.localtime(timestamp)
     name = time.strftime("%d-%m-%Y %H-%M", local_time)
         
-    plt.savefig(f'/app/logs/{name}{mc}.png')
+    plt.savefig(f'/app/logs/{name}.png')
     plt.close()
-    logging.info(f'plot saved as {name}{mc}.png')
+    logging.info(f'plot saved as {name}.png')
     
 # Callback function for determining how many chunks should be waited for before plotting graph
 def callback_chunks(ch, method, properties, body):
@@ -292,7 +292,7 @@ def mc_callback(ch, method, properties, body):
 
         # draw the legend
         main_axes.legend( frameon=False ) # no box around the legend
-        save_plot("mc")
+        save_plot()
         plt.close()
         
         logging.info("Shutting down...")
