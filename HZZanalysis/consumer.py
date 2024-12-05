@@ -17,10 +17,6 @@ if debug:
 else:
     logging.basicConfig(level=logging.WARNING, handlers=[logging.StreamHandler()])
 
-datasets = {'A':0,'B':1,'C':2,'D':3}
-lumis = [0.5,1.9,2.9,4.7]
-dataset = datasets[os.getenv('DATASET', 'A').upper()]
-lumi = lumis[dataset] # selects lumi based on which dataset is in use
 lumi = 10.0 # 10.0 used for final analysis
 
 variables = ['lep_pt','lep_eta','lep_phi','lep_E','lep_charge','lep_type']

@@ -36,7 +36,6 @@ while [[ "$#" -gt 0 ]]; do
         --consumers) NUM_CONSUMERS="$2"; shift ;;
         --href) HREF="$2"; shift ;;
         --debug) DEBUG="$2"; shift ;;
-	--dataset) DATASET="$2"; shift ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
