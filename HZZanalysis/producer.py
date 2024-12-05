@@ -28,9 +28,6 @@ GeV = 1.0
 
 path = sys.argv[1]
 
-#with open('datahref.txt', 'r') as file:
-#    path = file.read()
-#path = "https://atlas-opendata.web.cern.ch/atlas-opendata/samples/2020/4lep/"
 
 samples = {
 
@@ -113,7 +110,6 @@ channel.queue_declare(queue='chunks_queue', durable=True)
 channel.queue_declare(queue='time_queue', durable=True)
 channel.queue_declare(queue='mc_task_queue', durable=True)
 channel.queue_declare(queue='mc_chunks_queue', durable=True)
-# Send numbers 1 to 100 to the queue
 
 overall_chunks = 0
 overall_mc_chunks = 0

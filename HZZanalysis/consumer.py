@@ -141,7 +141,7 @@ def mc_callback(ch, method, properties, body):
     identifier = message["identifier"]
     val = message["val"]
     logging.info("mc recieved")
-    info = infofile.infos[val] # open infofile
+    info = infofile.infos[val]
     xsec_weight = (lumi*1000*info["xsec"])/(info["red_eff"]*info["sumw"]) #*1000 to go from fb-1 to pb-1
 
     data = mc_process_sample(incoming, val)
@@ -174,7 +174,7 @@ connection = connect_to_rabbitmq()
 channel = connection.channel()
 channel.basic_qos(prefetch_count=1)
 
-# Declare a queue
+# Declare queues
 channel.queue_declare(queue='task_queue', durable=True)
 channel.queue_declare(queue='result_queue', durable=True)
 channel.queue_declare(queue='shutdown_queue', durable=True)
