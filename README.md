@@ -12,3 +12,5 @@ Example use:
 - Runs with 24 consumers, debugging information set to print, and using data from https://somedata.com/data/
 
 Graphing will be output in the same folder as run.sh is in, within a folder called output (this will be created if not available).
+
+Tested with git bash terminal on Windows 10 and Windows 11.
